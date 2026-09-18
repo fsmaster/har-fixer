@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HAR Fixer — Fix HAR files for Google HAR Analyzer (free, 100% local)</title>
+  <meta name="description" content="Google HAR Analyzer won't open your HAR file? HAR Fixer repairs broken, sanitized and truncated HAR files in your browser — fixes “Unknown base64 encoding at char”, “Unable to process the HAR file” and more. Nothing is uploaded.">
+  <link rel="canonical" href="https://harfixer.com/">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="author" content="Igor Marchuk">
+  <meta name="theme-color" content="#09090b">
+  <meta name="color-scheme" content="dark">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="HAR Fixer">
+  <meta property="og:url" content="https://harfixer.com/">
+  <meta property="og:title" content="HAR Fixer — make any HAR file load in Google HAR Analyzer">
+  <meta property="og:description" content="Repair broken, sanitized and truncated HAR files in your browser. Free, open source, nothing is uploaded.">
+  <meta property="og:image" content="https://harfixer.com/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="HAR Fixer — fix HAR files for Google HAR Analyzer">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="HAR Fixer — make any HAR file load in Google HAR Analyzer">
+  <meta name="twitter:description" content="Repair broken, sanitized and truncated HAR files in your browser. Nothing is uploaded.">
+  <meta name="twitter:image" content="https://harfixer.com/og.png">
+
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "@id": "https://harfixer.com/#app",
+        "name": "HAR Fixer",
+        "url": "https://harfixer.com/",
+        "description": "Repairs broken, sanitized and truncated HAR (HTTP Archive) files so they load in Google HAR Analyzer. Runs entirely in the browser.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any (web browser)",
+        "browserRequirements": "Requires JavaScript",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "featureList": [
+          "Fixes 'Unknown base64 encoding at char' from redacted HAR bodies",
+          "Fixes 'Unable to process the HAR file' JSON errors, BOM and trailing commas",
+          "Recovers truncated HAR files",
+          "Repairs missing request, response, timings and invalid dates",
+          "Optional sanitization of cookies, auth headers and bodies",
+          "100% client-side — HAR files are never uploaded"
+        ],
+        "author": { "@type": "Person", "name": "Igor Marchuk", "url": "https://fsmaster.com/" },
+        "sameAs": ["https://github.com/fsmaster/har-fixer"]
+      },
+      {
+        "@type": "HowTo",
+        "name": "How to fix a HAR file that Google HAR Analyzer rejects",
+        "totalTime": "PT1M",
+        "step": [
+          { "@type": "HowToStep", "name": "Open the HAR", "text": "Drop the .har file onto HAR Fixer or click Choose file. It is read locally by your browser." },
+          { "@type": "HowToStep", "name": "Fix it", "text": "Click Fix HAR. HAR Fixer replays Google's loader, lists what would crash it and repairs every problem." },
+          { "@type": "HowToStep", "name": "Download and analyze", "text": "Download name.fixed.har and open it in Google HAR Analyzer at toolbox.googleapps.com/apps/har_analyzer/." }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Why does Google HAR Analyzer say “Unknown base64 encoding at char: [”?",
+            "acceptedAnswer": { "@type": "Answer", "text": "The HAR was sanitized. The tool replaced a response body with a placeholder such as “[text/javascript redacted]” but left content.encoding set to base64. Google tries to base64-decode the placeholder, hits the “[” character and rejects the whole file. HAR Fixer removes the stale base64 flag only on bodies that are not valid base64, so real images and fonts are untouched." } },
+          { "@type": "Question", "name": "What does “Unable to process the HAR file” mean?",
+            "acceptedAnswer": { "@type": "Answer", "text": "The file is not valid JSON. Common causes are a byte-order mark at the start, trailing commas, or a file that was cut off during export. HAR Fixer strips the BOM, removes trailing commas and recovers truncated files up to the last complete request." } },
+          { "@type": "Question", "name": "Why does it say “No log entries found in the file.”?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Google requires a log.entries array with at least one request. HAR Fixer also rescues entries stored at the wrong level (a bare array, a nested har object or root-level entries). If the recording really has zero requests, record the HAR again with the Network panel open before reproducing the issue." } },
+          { "@type": "Question", "name": "Is my HAR file uploaded anywhere?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. HAR Fixer is a static page and all processing happens in your browser with JavaScript. The server's Content-Security-Policy forbids the page from making network requests, and the code is open source on GitHub." } },
+          { "@type": "Question", "name": "Will HAR Fixer change a HAR that is already valid?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. A normal HAR exported from Chrome, Edge, Firefox or Safari passes through unchanged. Only fields that would crash the analyzer or break the HAR 1.2 format are touched, and every change is listed." } },
+          { "@type": "Question", "name": "Can I remove passwords and cookies from a HAR before sharing it?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. Tick “Extra sanitize” to empty cookies, redact Authorization, Cookie, Set-Cookie, API-key and x-*auth* headers, redact tokens in query strings and replace request and response bodies with [REDACTED]. The result still loads in Google HAR Analyzer." } }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #09090b; --bg2: #0f0f12; --card: #121216; --line: #27272a; --line2: #3f3f46;
+      --text: #e4e4e7; --muted: #a1a1aa; --dim: #71717a;
+      --accent: #22d3ee; --accent2: #a78bfa; --ok: #34d399; --bad: #f87171; --warn: #fbbf24;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--sans); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, kbd, pre { font-family: var(--mono); font-size: .88em; }
+    code { background: #18181b; border: 1px solid var(--line); border-radius: 6px; padding: .08em .4em; color: #f4f4f5; overflow-wrap: anywhere; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+    .skip { position: absolute; left: -999px; } .skip:focus { left: 12px; top: 12px; background: #fff; color: #000; padding: 6px 10px; z-index: 99; }
+
+    header.top { position: sticky; top: 0; z-index: 20; background: rgba(9,9,11,.82); backdrop-filter: blur(10px); border-bottom: 1px solid #18181b; }
+    header.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 700; letter-spacing: -.01em; }
+    .brand:hover { text-decoration: none; }
+    .brand svg { width: 28px; height: 28px; }
+    nav.links { display: flex; gap: 22px; font-size: 14px; }
+    nav.links a { color: var(--muted); } nav.links a:hover { color: var(--text); text-decoration: none; }
+    @media (max-width: 720px) { nav.links a:not(.gh) { display: none; } }
+
+    .hero { padding: 56px 0 24px; position: relative; overflow: hidden; }
+    .hero::before { content: ""; position: absolute; inset: -200px -100px auto; height: 520px; background: radial-gradient(600px 260px at 30% 30%, rgba(34,211,238,.13), transparent 70%), radial-gradient(500px 240px at 75% 20%, rgba(167,139,250,.12), transparent 70%); pointer-events: none; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; background: #111114; }
+    .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+    h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1.08; letter-spacing: -.03em; margin: 18px 0 14px; max-width: 820px; }
+    h1 .grad { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lede { color: var(--muted); font-size: 18px; max-width: 760px; margin: 0 0 28px; }
+
+    /* tool */
+    .tool { position: relative; background: linear-gradient(180deg, #131317, #0e0e11); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 30px 80px -40px rgba(0,0,0,.8); }
+    .drop { border: 1.5px dashed var(--line2); border-radius: 14px; padding: 34px 20px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; outline: none; }
+    .drop:hover, .drop:focus-visible { border-color: var(--accent); background: rgba(34,211,238,.04); }
+    .drop.over { border-color: var(--accent); background: rgba(34,211,238,.08); }
+    .drop .big { font-size: 18px; font-weight: 600; margin: 8px 0 4px; }
+    .drop .small { color: var(--dim); font-size: 14px; margin: 0 0 16px; }
+    .drop svg.up { width: 40px; height: 40px; color: var(--accent); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 14px/1 var(--sans); padding: 11px 16px; border-radius: 10px; border: 1px solid var(--line2); background: #18181b; color: var(--text); cursor: pointer; transition: background .15s, border-color .15s, transform .05s; text-decoration: none; }
+    .btn:hover { background: #1f1f23; border-color: #52525b; text-decoration: none; }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn.primary { background: linear-gradient(90deg, #06b6d4, #8b5cf6); border-color: transparent; color: #fff; }
+    .btn.primary:hover { filter: brightness(1.1); }
+    .btn svg { width: 16px; height: 16px; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .drop .row { justify-content: center; }
+
+    .file { display: none; margin-top: 16px; }
+    .file.show { display: block; }
+    .fileline { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #0c0c0f; }
+    .fileline .name { font-family: var(--mono); font-size: 14px; overflow-wrap: anywhere; flex: 1; }
+    .fileline .meta { color: var(--dim); font-size: 13px; white-space: nowrap; }
+    .opts { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 14px 2px; font-size: 14px; color: var(--muted); }
+    .opts label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+    .opts input { accent-color: var(--accent); width: 16px; height: 16px; }
+    .opts small { color: var(--dim); }
+
+    .verdict { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 12px; font-size: 14px; margin-top: 12px; }
+    .verdict.bad { background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.3); color: #fecaca; }
+    .verdict.good { background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.3); color: #bbf7d0; }
+    .verdict.warn { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.3); color: #fde68a; }
+    .verdict b { color: #fff; }
+    .verdict svg { flex: none; width: 18px; height: 18px; margin-top: 2px; }
+    .problems { margin: 8px 0 0; padding: 0; list-style: none; max-height: 160px; overflow: auto; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+    .problems li { padding: 3px 0; border-top: 1px solid #1c1c20; overflow-wrap: anywhere; }
+    .problems li span { color: var(--bad); }
+
+    .result { display: none; margin-top: 16px; }
+    .result.show { display: block; }
+    .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+    @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .stat { background: #0c0c0f; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+    .stat .k { color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+    .stat .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+    .stat .v small { font-size: 13px; color: var(--muted); font-weight: 500; }
+    .fixes { margin: 12px 0; padding: 8px 14px; list-style: none; max-height: 220px; overflow: auto; background: #0c0c0f; border: 1px solid var(--line); border-radius: 12px; font-size: 14px; }
+    .fixes li { padding: 6px 0 6px 22px; position: relative; border-bottom: 1px solid #1a1a1e; }
+    .fixes li:last-child { border-bottom: 0; }
+    .fixes li::before { content: "✓"; position: absolute; left: 2px; color: var(--ok); font-weight: 700; }
+    .fixes li.none::before { content: "•"; color: var(--dim); }
+
+    /* content */
+    section.block { padding: 64px 0 8px; }
+    h2 { font-size: clamp(24px, 3.2vw, 32px); letter-spacing: -.02em; line-height: 1.2; margin: 0 0 10px; }
+    h3 { font-size: 18px; margin: 0 0 6px; letter-spacing: -.01em; }
+    .sub { color: var(--muted); margin: 0 0 28px; max-width: 760px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    @media (max-width: 820px) { .grid3, .grid2 { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+    .card p { color: var(--muted); margin: 0; font-size: 15px; }
+    .card p + p { margin-top: 10px; }
+    .num { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: rgba(34,211,238,.12); color: var(--accent); font-weight: 700; font-size: 14px; margin-bottom: 10px; }
+    .err { border-left: 3px solid var(--bad); }
+    .err h3 code { color: #fecaca; background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.25); font-size: 14px; }
+    .err .fix { margin-top: 10px; color: #bbf7d0; font-size: 14px; }
+    pre.code { background: #0c0c0f; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; overflow: auto; color: #d4d4d8; line-height: 1.55; margin: 0; }
+    pre.code .c { color: var(--dim); }
+    details { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 4px 18px; margin-bottom: 10px; }
+    details summary { cursor: pointer; font-weight: 600; padding: 12px 0; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+    details summary::-webkit-details-marker { display: none; }
+    details summary::after { content: "+"; color: var(--dim); font-weight: 400; font-size: 20px; line-height: 1; }
+    details[open] summary::after { content: "–"; }
+    details p { color: var(--muted); margin: 0 0 14px; }
+    table.cmp { width: 100%; border-collapse: collapse; font-size: 14px; }
+    table.cmp th, table.cmp td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    table.cmp th { color: var(--dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+    table.cmp td:first-child { white-space: nowrap; font-weight: 600; }
+    .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+    .priv { display: flex; gap: 18px; align-items: flex-start; }
+    .priv svg { flex: none; width: 40px; height: 40px; color: var(--ok); }
+    footer { border-top: 1px solid #18181b; margin-top: 72px; padding: 28px 0 40px; color: var(--dim); font-size: 14px; }
+    footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+    footer a { color: var(--muted); }
+
+    /* modal */
+    dialog { width: min(1000px, calc(100vw - 32px)); height: min(80vh, 900px); padding: 0; border: 1px solid var(--line2); border-radius: 16px; background: #0c0c0f; color: var(--text); }
+    dialog::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(3px); }
+    dialog .mh { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); gap: 10px; }
+    dialog .mh span { color: var(--dim); font-size: 13px; }
+    dialog pre { margin: 0; padding: 16px; height: calc(100% - 58px); overflow: auto; font-size: 12.5px; color: #d4d4d8; white-space: pre; }
+    .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #18181b; border: 1px solid var(--line2); padding: 10px 16px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 50; }
+    .toast.show { opacity: 1; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  </style>
+</head>
+<body>
+<a class="skip" href="#tool">Skip to the fixer</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="HAR Fixer home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#lg)"/><path d="M9 10v12M9 16h7M16 10v12M20.5 22l2.5-12 2.5 12M21.4 18h3.2" stroke="#09090b" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      HAR Fixer
+    </a>
+    <nav class="links" aria-label="Main">
+      <a href="#errors">Errors</a>
+      <a href="#how">How it works</a>
+      <a href="#record">Record a HAR</a>
+      <a href="#faq">FAQ</a>
+      <a class="gh" href="https://github.com/fsmaster/har-fixer" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <span class="eyebrow"><span class="dot"></span> Free · Open source · Runs in your browser</span>
+      <h1>Fix HAR files so <span class="grad">Google HAR Analyzer</span> opens them</h1>
+      <p class="lede">A customer sent a HAR and Google's analyzer won't open it? HAR Fixer repairs broken, sanitized and truncated HAR files: redacted base64 bodies, bad JSON, missing requests, invalid dates. Your file never leaves this tab.</p>
+
+      <div class="tool" id="tool">
+        <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a HAR file or drop it here">
+          <svg class="up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+          <p class="big">Drop a <code>.har</code> file here</p>
+          <p class="small">or click to choose. JSON exports work too. Processed locally, never uploaded.</p>
+          <div class="row">
+            <button class="btn" type="button" id="choose">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>
+              Choose file
+            </button>
+            <button class="btn" type="button" id="sample">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+              Load broken sample
+            </button>
+          </div>
+          <input type="file" id="input" accept=".har,.json,application/json" class="sr" tabindex="-1" aria-hidden="true">
+        </div>
+
+        <div class="file" id="file">
+          <div class="fileline">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>
+            <span class="name" id="fname"></span>
+            <span class="meta" id="fmeta"></span>
+          </div>
+          <div id="diag"></div>
+          <div class="opts" role="group" aria-label="Options">
+            <label><input type="checkbox" id="optSanitize"> Extra sanitize <small>(cookies, auth headers, tokens, bodies)</small></label>
+            <label><input type="checkbox" id="optPretty" checked> Pretty-print output</label>
+            <label><input type="checkbox" id="optStrip"> Strip non-standard <code>_fields</code></label>
+            <label><input type="checkbox" id="optBodies"> Drop response bodies <small>(smaller file)</small></label>
+          </div>
+          <div class="row">
+            <button class="btn primary" type="button" id="fix">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.3-1.3a4 4 0 0 0-5-5L13 2z" transform="translate(-2 1)"/></svg>
+              Fix HAR
+            </button>
+            <button class="btn" type="button" id="reset">Choose another file</button>
+          </div>
+        </div>
+
+        <div class="result" id="result" aria-live="polite">
+          <div class="stats" id="stats"></div>
+          <ul class="fixes" id="fixes"></ul>
+          <div id="after"></div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn primary" type="button" id="download">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 4v12m0 0 4.5-4.5M12 16l-4.5-4.5M4 20h16"/></svg>
+              <span id="dlname">Download</span>
+            </button>
+            <button class="btn" type="button" id="preview">Preview JSON</button>
+            <a class="btn" href="https://toolbox.googleapps.com/apps/har_analyzer/" target="_blank" rel="noopener">Open Google HAR Analyzer ↗</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="errors">
+    <div class="wrap">
+      <h2>Google HAR Analyzer errors this fixes</h2>
+      <p class="sub">We traced these messages to the exact lines in the analyzer's JavaScript. One bad request is enough for it to reject the whole file, even when the HAR is otherwise valid.</p>
+      <div class="grid2">
+        <article class="card err">
+          <h3><code>Unknown base64 encoding at char: [</code></h3>
+          <p>The most common one, and it comes from <strong>sanitized HARs</strong>. Sentry, HAR sanitizer tools and redaction scripts swap a large body for a placeholder such as <code>[text/javascript redacted]</code>, but leave <code>"encoding": "base64"</code> and the original <code>size</code> (e.g. 3,533,145). The analyzer base64-decodes every non-image body while loading, reaches <code>[</code> and gives up on the whole file.</p>
+          <p class="fix">Fix: drop the base64 flag only where the text isn't valid base64, and set <code>size</code> to the placeholder's length. Real images and fonts keep their encoding.</p>
+        </article>
+        <article class="card err">
+          <h3><code>Unable to process the HAR file: SyntaxError…</code></h3>
+          <p>The file isn't valid JSON. Usually there's a UTF-8 byte-order mark at the start, trailing commas from a hand-edited or scripted export, or the file was <strong>cut off</strong> because the browser or a size limit stopped it partway through.</p>
+          <p class="fix">Fix: strip the BOM, remove trailing commas and cut a truncated file back to the last complete request, then close the JSON properly.</p>
+        </article>
+        <article class="card err">
+          <h3><code>URIError: URI malformed</code></h3>
+          <p>A response labelled <code>application/x-www-form-urlencoded</code> contains a stray <code>%</code> (like <code>100%</code>) or a truncated escape. The analyzer runs <code>decodeURIComponent()</code> on it and throws.</p>
+          <p class="fix">Fix: relabel just that body as <code>text/plain</code>. The text itself is untouched.</p>
+        </article>
+        <article class="card err">
+          <h3><code>No log entries found in the file.</code></h3>
+          <p>Google needs <code>log.entries</code> with at least one request. Some tools write a bare array, wrap the HAR in <code>{"har": …}</code> or put <code>entries</code> at the top level.</p>
+          <p class="fix">Fix: move the entries back under <code>log</code>. If the recording really has zero requests, record it again (see below).</p>
+        </article>
+        <article class="card err">
+          <h3>Silent failures: blank page or a frozen spinner</h3>
+          <p>A <code>null</code> entry, a numeric <code>mimeType</code> or <code>method</code>, a header whose name is a number, or <code>"timings": "fast"</code> all throw deep inside the loader without a readable message.</p>
+          <p class="fix">Fix: drop null entries, convert these fields to strings or numbers, and add missing <code>request</code>, <code>response</code>, <code>content</code>, <code>timings</code> and <code>cache</code> objects.</p>
+        </article>
+        <article class="card err">
+          <h3>Invalid dates and non-numeric timings</h3>
+          <p>A <code>startedDateTime</code> of <code>"bad"</code> or an epoch number, or <code>time: "n/a"</code>, breaks the waterfall and sorting, and trips up other HAR viewers too.</p>
+          <p class="fix">Fix: epoch values become ISO 8601 and invalid ones get a valid timestamp. Timings and sizes are converted to numbers, with <code>-1</code> meaning "not available" as the HAR 1.2 spec says.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="how">
+    <div class="wrap">
+      <h2>How it works</h2>
+      <p class="sub">HAR Fixer checks the file the same way Google's loader does, then changes only what would crash it. A normal HAR from Chrome, Edge, Firefox or Safari comes out unchanged.</p>
+      <div class="grid3">
+        <div class="card"><span class="num">1</span><h3>Diagnose</h3><p>The file is parsed locally and run through a replica of the analyzer's load path. You see exactly which request would crash it and why, before anything is changed.</p></div>
+        <div class="card"><span class="num">2</span><h3>Repair</h3><p>JSON is recovered, the HAR 1.2 structure is normalized, and the three sanitizer bugs (stale base64 flags, inflated placeholder sizes, malformed urlencoded bodies) are fixed. Each kind of change gets one summary line.</p></div>
+        <div class="card"><span class="num">3</span><h3>Verify &amp; download</h3><p>The fixed HAR goes through the Google check again before you download <code>name.fixed.har</code>. You can also redact secrets before you share it.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="record">
+    <div class="wrap">
+      <h2>How to record a HAR file</h2>
+      <p class="sub">If you're asking a customer for a HAR, send them this. Open the Network panel <em>before</em> reproducing the problem, or the file will be empty.</p>
+      <div class="tablewrap">
+        <table class="cmp">
+          <thead><tr><th>Browser</th><th>Steps</th></tr></thead>
+          <tbody>
+            <tr><td>Chrome / Edge</td><td>Press <kbd>F12</kbd> (Mac: <kbd>⌥⌘I</kbd>) → <b>Network</b> tab → tick <b>Preserve log</b> → reproduce the issue → click the <b>Export HAR</b> (download arrow) button. Newer Chrome versions export a sanitized HAR (no cookies or auth headers) by default. That's fine for most support cases.</td></tr>
+            <tr><td>Firefox</td><td><kbd>F12</kbd> → <b>Network</b> → gear icon → <b>Persist Logs</b> → reproduce → right-click any request → <b>Save All As HAR</b>.</td></tr>
+            <tr><td>Safari</td><td>Settings → Advanced → <b>Show features for web developers</b> → <kbd>⌥⌘I</kbd> → <b>Network</b> → <b>Preserve Log</b> → reproduce → <b>Export</b>.</td></tr>
+            <tr><td>Charles / Fiddler / proxies</td><td>Export the session as HTTP Archive (<code>.har</code>). These exports often use loose dates and non-standard fields. Run them through HAR Fixer before opening them in Google's analyzer.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="privacy">
+    <div class="wrap">
+      <div class="card priv">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
+        <div>
+          <h2 style="font-size:22px">Your HAR never leaves your browser</h2>
+          <p>HAR files carry session cookies, bearer tokens and personal data, so uploading them to a random website is risky. HAR Fixer is a static page: the file is read with the browser's FileReader, fixed in JavaScript and saved with a local download link. The server's <code>Content-Security-Policy</code> sets <code>connect-src 'none'</code>, so the page <em>can't</em> send data anywhere. You can check this in DevTools, or <a href="https://github.com/fsmaster/har-fixer" rel="noopener">read the source</a> and run it offline.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="cli">
+    <div class="wrap">
+      <h2>Command line &amp; self-hosting</h2>
+      <p class="sub">The same fixer runs in Node.js with no dependencies. It's handy for support teams that process a lot of customer HARs.</p>
+      <pre class="code"><span class="c"># fix a file</span>
+git clone https://github.com/fsmaster/har-fixer &amp;&amp; cd har-fixer
+node cli.js customer.har customer.fixed.har
+
+<span class="c"># only diagnose: exits 1 if Google HAR Analyzer would reject it</span>
+node cli.js customer.har --check
+
+<span class="c"># redact cookies/tokens/bodies and drop Chrome's _fields before sharing</span>
+node cli.js customer.har clean.har --sanitize --strip-custom
+
+<span class="c"># run the web UI locally</span>
+python3 -m http.server 8080   <span class="c"># → http://127.0.0.1:8080</span></pre>
+    </div>
+  </section>
+
+  <section class="block" id="faq">
+    <div class="wrap">
+      <h2>FAQ</h2>
+      <details><summary>Why does Google HAR Analyzer say “Unknown base64 encoding at char: [”?</summary><p>The HAR was sanitized. The tool replaced a response body with a placeholder such as <code>[text/javascript redacted]</code> but left <code>content.encoding</code> set to <code>base64</code>. Google tries to decode the placeholder, hits the <code>[</code> character and rejects the whole file. HAR Fixer removes the stale flag only on bodies that aren't valid base64.</p></details>
+      <details><summary>What does “Unable to process the HAR file” mean?</summary><p>The file isn't valid JSON: a byte-order mark, trailing commas, or an export that was cut off. HAR Fixer repairs all three. A truncated file is recovered up to the last complete request.</p></details>
+      <details><summary>Why does it say “No log entries found in the file.”?</summary><p>The analyzer needs a <code>log.entries</code> array with at least one request. HAR Fixer rescues entries stored in the wrong place. If there really are none, the Network panel wasn't open while the issue happened. Record it again.</p></details>
+      <details><summary>Is my HAR file uploaded anywhere?</summary><p>No. Everything runs in your browser. The page's Content-Security-Policy blocks all outgoing requests, and the code is open source.</p></details>
+      <details><summary>Will HAR Fixer change a HAR that is already valid?</summary><p>No. Valid HARs from Chrome, Edge, Firefox and Safari pass through unchanged, and every change it does make is listed after the fix.</p></details>
+      <details><summary>Can I remove passwords and cookies from a HAR before sharing it?</summary><p>Yes. Tick <b>Extra sanitize</b> to empty cookies, redact <code>Authorization</code>, <code>Cookie</code>, <code>Set-Cookie</code>, API-key and <code>x-*auth*</code> headers, redact tokens in URLs and replace bodies with <code>[REDACTED]</code>. The result still loads in Google HAR Analyzer.</p></details>
+      <details><summary>My HAR is huge. Will it work?</summary><p>Files of a few hundred MB work in desktop Chrome and Firefox. The limit is your browser's memory, not a server. Tick <b>Drop response bodies</b> to shrink the output a lot while keeping the full request waterfall and timings.</p></details>
+      <details><summary>Does it work with HAR files from Charles, Fiddler, Postman or Playwright?</summary><p>Yes. HAR Fixer normalizes anything that is roughly HAR 1.2: header objects instead of arrays, epoch dates, string timings, missing <code>creator</code> or <code>pages</code>, and nested or bare entry arrays.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>HAR Fixer · 100% client-side, nothing is uploaded · MIT licensed</span>
+    <span><a href="https://github.com/fsmaster/har-fixer" rel="noopener">GitHub</a> · <a href="https://toolbox.googleapps.com/apps/har_analyzer/" rel="noopener">Google HAR Analyzer</a> · Built by <a href="https://fsmaster.com/" rel="author">Igor Marchuk</a></span>
+  </div>
+</footer>
+
+<dialog id="modal" aria-label="Fixed HAR preview">
+  <div class="mh"><strong>Fixed HAR</strong><span id="mnote"></span><button class="btn" type="button" id="mclose">Close</button></div>
+  <pre id="mpre"></pre>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="fixer.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

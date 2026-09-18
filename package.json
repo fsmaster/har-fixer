@@ -1,0 +1,19 @@
+{
+  "name": "har-fixer",
+  "version": "1.0.0",
+  "description": "Fix broken, sanitized and truncated HAR files so Google HAR Analyzer loads them. 100% client-side web UI + zero-dependency Node CLI.",
+  "main": "fixer.js",
+  "bin": { "har-fixer": "cli.js" },
+  "scripts": {
+    "start": "npx serve -l 8080 .",
+    "test": "node test/test.js",
+    "fix": "node cli.js"
+  },
+  "files": ["fixer.js", "cli.js"],
+  "keywords": ["har", "http-archive", "har-analyzer", "google-har-analyzer", "har-fixer", "sanitize", "devtools"],
+  "author": "Igor Marchuk (https://fsmaster.com)",
+  "homepage": "https://harfixer.com",
+  "repository": { "type": "git", "url": "https://github.com/fsmaster/har-fixer.git" },
+  "license": "MIT",
+  "engines": { "node": ">=14" }
+}

@@ -5,6 +5,7 @@ server {
     server_name harfixer.com www.harfixer.com;
 
     root /var/www/harfixer;
+    if ($host = www.harfixer.com) { return 301 https://harfixer.com$request_uri; }
     index index.html;
 
     # 100% client-side: the page may not talk to any server (connect-src 'none').
